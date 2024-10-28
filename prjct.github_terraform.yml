@@ -1,0 +1,265 @@
+parameters:
+  - name: tf_version
+    type: string
+  - name: tf_service_connection
+    type: string
+  - name: tf_env
+    type: string
+  - name: tf_subscription_id
+    type: string
+  - name: appId
+    type: string
+  - name: installationId
+    type: string
+  - name: backendConfigPath
+    type: string
+  - name: tfvarFile         
+    type: string        
+  
+  
+steps:
+  - checkout: self
+    clean: true
+
+  - task: InstallSSHKey@0
+    displayName: Add SSH key for AsdaCloudProductLibrary
+    inputs:
+      knownHostsEntry: "github.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqPEiiphnt+VTTvDP6mHBL9j1aNUkY4Ue1gvwnGLVlOhGeYrnZaMgRK6+PKCUXaDbC7qtbW8gIkhL7aGCsOr/C56SJMy/BCZfxd1nWzAOxSDPgVsmerOBYfNqltV9/hWCqBywINIR+5dIg6JTJ72pcEpEjcYgXkE2YEFXV1JHnsKgbLWNlhScqb2UmyRkQyytRLtL+38TGxkxCflmO+5Z8CSSNY7GidjMIZ7Q4zMjA2n1nGrlTDkzwDCsw+wqFPGQA179cnfGWOWRVruj16z6XyvxvjJwbz0wQZ75XK5tKSb7FNyeIEs4TT4jk+S4dhPeAUC5y+bDYirYgM4GC7uEnztnZyaVWQ7B381AK4Qdrwt51ZqExKbQpTUNn+EjqoTwvqNj4kqx5QUCI0ThS/YkOxJCXmPUWZbhjpCg56i+2aB6CmK2JGhn57K5mj0MNdBXA4/WnwH6XoPWJzK5Nyu2zB3nAZp+S5hpQs+p1vN1/wsjk="
+      # ssshPublicKey: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDMUGLDEbZYvo4IoqFDYMZnTXNyJ6SiDbO3zyoYLWy5Bo+7gHExUQKIdEqIBnJuJ44Q8C6TQlGb66zVjV/R9YMduqRiW5uSjUZFTDpyzD4sN9jAfiMrh+2ANnQvf49wsKALvChfcSgahFBI5CFghM4f5Czs1VYtBlzbbOn0PCicBICgAbxCJ8jLxguflzevZ24y08BpXsmP7f7+XMIUKvYvvguI17EWWb3cGzh7+CQPkGLwbx0Y4pFEv2yZcmqZIj5jbZP+7Lhs7mrXxvYn1x9+5msxaq0RzCgG6hUUOrnFCvObwcCkz5+//1zrC5JkOmUT91kidlAD0QHEg6u/4DqB2BH1n7vGoIlgpma0YPcZc18xHUpSIlk7kN2Mb4eVT0gLqFoYbqGGg9PLeO6KbM8kXP2kqvp38Gcae7lMBo8YlOp9Rhtmokg2ekmR2vB7uld/0OhLPNETvqwN7n8T51wb0xXHMqaSzCF8UGEfYbIyvkcDeQRZpSzYDS2zWVFpAAM= Shiva@Varma"
+      sshKeySecureFile: 'id_rsa'
+      #base64_ssh_key: "c3NoLXJzYSBBQUFBQjNOemFDMXljMkVBQUFBREFRQUJBQUFCZ1FETVVHTERFYlpZdm80SW9xRkRZTVpuVFhOeUo2U2lEYk8zenlvWUxXeTVCbys3Z0hFeFVRS0lkRXFJQm5KdUo0NFE4QzZUUWxHYjY2elZqVi9SOVlNZHVxUmlXNXVTalVaRlREcHl6RDRzTjlqQWZpTXJoKzJBTm5RdmY0OXdzS0FMdkNoZmNTZ2FoRkJJNUNGZ2hNNGY1Q3pzMVZZdEJsemJiT24wUENpY0JJQ2dBYnhDSjhqTHhndWZsemV2WjI0eTA4QnBYc21QN2Y3K1hNSVVLdll2dmd1STE3RVdXYjNjR3poNytDUVBrR0x3YngwWTRwRkV2MnlaY21xWklqNWpiWlArN0xoczdtclh4dlluMXg5KzVtc3hhcTBSekNnRzZoVVVPcm5GQ3ZPYndjQ2t6NSsvLzF6ckM1SmtPbVVUOTFraWRsQUQwUUhFZzZ1LzREcUIyQkgxbjd2R29JbGdwbWEwWVBjWmMxOHhIVXBTSWxrN2tOMk1iNGVWVDBnTHFGb1licUdHZzlQTGVPNktiTThrWFAya3F2cDM4R2NhZTdsTUJvOFlsT3A5Umh0bW9rZzJla21SMnZCN3VsZC8wT2hMUE5FVHZxd043bjhUNTF3YjB4WEhNcWFTekNGOFVHRWZZYkl5dmtjRGVRUlpwU3pZRFMyeldWRnBBQU09IFNoaXZhQFZhcm1hCg=="
+  - task: ms-devlabs.custom-terraform-tasks.custom-terraform-installer-task.TerraformInstaller@0
+    displayName: "Use Terraform Version ${{ parameters.tf_version }}"
+    inputs:
+      terraformVersion: ${{ parameters.tf_version }}
+
+  - script: |
+      echo "##vso[task.setvariable variable=enable_tf_state_locking;]false"
+    name: OverrideTFSStateLocking
+    displayName: "Disable Terraform State locking for non-main branches"
+    condition: ne(variables['Build.SourceBranch'], 'refs/heads/main')
+
+  
+ 
+  
+  
+  - task: AzureCLI@2
+    displayName: Set Terraform environment variables
+    inputs:
+      azureSubscription: ${{ parameters.tf_service_connection }} #'Free Trial (09b27316-79bc-4c82-8c9f-7d36527f6142)' 
+      scriptType: "bash"
+      addSpnToEnvironment: true
+      useGlobalConfig: true
+      
+      scriptLocation: "inlineScript"
+      inlineScript: |
+        set -eu  # Fail on error
+        servicePrincipalId="314a4e41-9a1e-48d3-b05b-83dc3b660c7b"  # Replace with your service principal ID or a method to get it
+        # servicePrincipalKey="vPl8Q~m9lH0eb2G13ue3.kd3FRWFuKtqxqgz4b5B"  # Replace with your service principal key or fetch dynamically
+        tenantId="fbbc769d-4de6-40e9-af32-78116ef7033d"  # Replace with your tenant ID or fetch dynamically
+        oidc_val=true
+        use_azuread_auth=true  
+        
+        echo "##vso[task.setvariable variable=ARM_CLIENT_ID]$servicePrincipalId"
+        # echo "##vso[task.setvariable variable=ARM_CLIENT_SECRET;issecret=true]$servicePrincipalKey"
+        echo "##vso[task.setvariable variable=ARM_SUBSCRIPTION_ID]${{ parameters.tf_subscription_id }}"
+        echo "##vso[task.setvariable variable=ARM_TENANT_ID]$tenantId"
+        echo "##vso[task.setvariable variable=ARM_USE_OIDC]$oidc_val"
+        echo "##vso[task.setvariable variable=ARM_USE_AZUREAD]$use_azuread_auth"
+        
+        
+
+      
+
+  - task: AzureCLI@2
+    displayName: Terraform init
+    
+    inputs:
+      azureSubscription: ${{ parameters.tf_service_connection }}
+      scriptType: bash
+      addSpnToEnvironment: true
+      useGlobalConfig: true
+      scriptLocation: inlineScript
+      inlineScript: |
+        set -eux  # Fail on error
+        # servicePrincipalId="e5f154b8-b1f0-42f7-939e-ea53b869edae"  # Replace with your service principal ID or a method to get it
+        # servicePrincipalKey="vPl8Q~m9lH0eb2G13ue3.kd3FRWFuKtqxqgz4b5B"  # Replace with your service principal key or fetch dynamically
+        # tenantId="fbbc769d-4de6-40e9-af32-78116ef7033d"  # Replace with your tenant ID or fetch dynamically
+        # servicePrincipalId="e9a37314-fcff-4c6d-8d32-4a2e4dba5a49"  # Replace with your service principal ID or a method to get it
+        # servicePrincipalKey="UKg8Q~rKSA9uVE1PLH.w1w3G~i6jxBy-bgdoFajg"  # Replace with your service principal key or fetch dynamically
+        # tenantId="fbbc769d-4de6-40e9-af32-78116ef7033d"  # Replace with your tenant ID or fetch dynamically
+        az --version
+        az account show
+        terraform --version
+       
+        # az login --service-principal -u $servicePrincipalId -p $servicePrincipalKey --tenant $tenantId
+         # Initialize Terraform with backend configuration
+        terraform init
+          -backend-config=${{ parameters.backendConfigPath }} 
+          -backend-config="subscription_id=${{ parameters.tf_subscription_id }}" \
+          -backend-config="tenant_id=$tenantId" \
+          -backend-config="client_id=$servicePrincipalId" \
+          -backend-config="client_id=$oidc_val" \
+          -backend-config="client_id=$use_azuread_auth"
+          # -backend-config="client_secret=$servicePrincipalKey"
+      workingDirectory: '$(System.DefaultWorkingDirectory)'
+        # terraform init -reconfigure \
+        #   # -backend-config=${{ parameters.backendConfigPath }} 
+        #   -backend-config="resource_group_name=Asda" \
+        #   -backend-config="storage_account_name=asda123" \
+        #   -backend-config="container_name=tfuser123" \
+        #   -backend-config="key=prod.terraform.tfstate"
+
+      #workingDirectory: '$(System.DefaultWorkingDirectory)'
+      #   #terraform init 
+      #   terraform init
+      #     -backend-config=${{ parameters.backendConfigPath }} 
+      #     -backend-config="subscription_id=${{ parameters.tf_subscription_id }}" \
+      #     -backend-config="tenant_id=$tenantId" \
+      #     -backend-config="client_id=$servicePrincipalId" \
+      #     -backend-config="client_secret=$servicePrincipalKey"
+      # workingDirectory: '$(System.DefaultWorkingDirectory)'
+      
+      
+  - task: AzureCLI@2
+    displayName: Terraform validate
+    inputs:
+      azureSubscription: ${{ parameters.tf_service_connection }}
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        set -eux  # Fail on error
+        # servicePrincipalId="e9a37314-fcff-4c6d-8d32-4a2e4dba5a49"  # Replace with your service principal ID or a method to get it
+        # servicePrincipalKey="UKg8Q~rKSA9uVE1PLH.w1w3G~i6jxBy-bgdoFajg"  # Replace with your service principal key or fetch dynamically
+        # tenantId="fbbc769d-4de6-40e9-af32-78116ef7033d"  # Replace with your tenant ID or fetch dynamically
+        terraform validate
+      workingDirectory: $(System.DefaultWorkingDirectory)
+      addSpnToEnvironment: true
+      
+  - task: AzureCLI@2
+    displayName: Terraform Plan
+    inputs:
+      azureSubscription: ${{ parameters.tf_service_connection }}
+      scriptType: pscore
+      scriptLocation: inlineScript
+      inlineScript: |
+        terraform plan --var-file=${{ parameters.tfvarFile }} -out='${{ parameters.tf_env }}-$(Build.BuildNumber).tfplan' -lock=$(enable_tf_state_locking)
+      workingDirectory: $(System.DefaultWorkingDirectory)
+      addSpnToEnvironment: true
+      failOnStandardError: true
+
+  - task: AzureCLI@2
+    displayName: Terraform Apply
+    inputs:
+      azureSubscription: ${{ parameters.tf_service_connection }}
+      scriptType: pscore
+      scriptLocation: inlineScript
+      inlineScript: |
+        terraform apply -input=false -auto-approve '${{ parameters.tf_env }}-$(Build.BuildNumber).tfplan'
+      workingDirectory: $(System.DefaultWorkingDirectory)
+      addSpnToEnvironment: true
+      failOnStandardError: true
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['Build.Reason'], 'Manual'))
+#   - task: InstallSSHKey@0
+#     displayName: Add SSH key for AsdaCloudProductLibrary
+#     inputs:
+#       knownHostsEntry: "github.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqPEiiphnt+VTTvDP6mHBL9j1aNUkY4Ue1gvwnGLVlOhGeYrnZaMgRK6+PKCUXaDbC7qtbW8gIkhL7aGCsOr/C56SJMy/BCZfxd1nWzAOxSDPgVsmerOBYfNqltV9/hWCqBywINIR+5dIg6JTJ72pcEpEjcYgXkE2YEFXV1JHnsKgbLWNlhScqb2UmyRkQyytRLtL+38TGxkxCflmO+5Z8CSSNY7GidjMIZ7Q4zMjA2n1nGrlTDkzwDCsw+wqFPGQA179cnfGWOWRVruj16z6XyvxvjJwbz0wQZ75XK5tKSb7FNyeIEs4TT4jk+S4dhPeAUC5y+bDYirYgM4GC7uEnztnZyaVWQ7B381AK4Qdrwt51ZqExKbQpTUNn+EjqoTwvqNj4kqx5QUCI0ThS/YkOxJCXmPUWZbhjpCg56i+2aB6CmK2JGhn57K5mj0MNdBXA4/WnwH6XoPWJzK5Nyu2zB3nAZp+S5hpQs+p1vN1/wsjk="
+#       sshKeySecureFile: 'id_rsa'
+#       base64_ssh_key: "c3NoLXJzYSBBQUFBQjNOemFDMXljMkVBQUFBREFRQUJBQUFCZ1FETVVHTERFYlpZdm80SW9xRkRZTVpuVFhOeUo2U2lEYk8zenlvWUxXeTVCbys3Z0hFeFVRS0lkRXFJQm5KdUo0NFE4QzZUUWxHYjY2elZqVi9SOVlNZHVxUmlXNXVTalVaRlREcHl6RDRzTjlqQWZpTXJoKzJBTm5RdmY0OXdzS0FMdkNoZmNTZ2FoRkJJNUNGZ2hNNGY1Q3pzMVZZdEJsemJiT24wUENpY0JJQ2dBYnhDSjhqTHhndWZsemV2WjI0eTA4QnBYc21QN2Y3K1hNSVVLdll2dmd1STE3RVdXYjNjR3poNytDUVBrR0x3YngwWTRwRkV2MnlaY21xWklqNWpiWlArN0xoczdtclh4dlluMXg5KzVtc3hhcTBSekNnRzZoVVVPcm5GQ3ZPYndjQ2t6NSsvLzF6ckM1SmtPbVVUOTFraWRsQUQwUUhFZzZ1LzREcUIyQkgxbjd2R29JbGdwbWEwWVBjWmMxOHhIVXBTSWxrN2tOMk1iNGVWVDBnTHFGb1licUdHZzlQTGVPNktiTThrWFAya3F2cDM4R2NhZTdsTUJvOFlsT3A5Umh0bW9rZzJla21SMnZCN3VsZC8wT2hMUE5FVHZxd043bjhUNTF3YjB4WEhNcWFTekNGOFVHRWZZYkl5dmtjRGVRUlpwU3pZRFMyeldWRnBBQU09IFNoaXZhQFZhcm1hCg=="    
+# # parameters:
+#   - name: tf_version
+#     type: string
+#   - name: tf_service_connection
+#     type: string
+#   - name: tfeny
+#     type: string
+#   - name: tf_subscription_id
+#     type: string
+#   - name: appId
+#     type: string
+#   - name: installationId
+#     type: string
+#   - name: backendConfigPath
+#     type: string
+#   - name: tf_env
+#     type: string
+
+# steps:
+#   - checkout: self
+#     clean: true
+
+#   - task: ms-devlabs.custom-terraform-tasks.custom-terraform-installer-task.TerraformInstaller@0
+#     displayName: "Use Terraform Version ${{ parameters.tf_version }}"
+#     inputs:
+#       terraformVersion: ${{ parameters.tf_version }}
+      
+#   - task: AzureCLI@2
+#     displayName: Set Terraform environment variables
+#     inputs:
+#       azureSubscription: 'Free Trial (09b27316-79bc-4c82-8c9f-7d36527f6142)'  # Change to your actual service connection name if needed
+#       scriptType: 'bash'
+#       scriptLocation: 'inlineScript'
+#       inlineScript: |
+#         set -eu  # Fail on error
+#         # Login using the Service Principal
+#         az login --service-principal -u "$(servicePrincipalId)" -p "$(servicePrincipalKey)" --tenant "$(tenantId)"
+      
+#         # Set the subscription context
+#         az account set --subscription '09b27316-79bc-4c82-8c9f-7d36527f6142'  # Replace with your actual subscription ID
+
+#         # Optionally set variables if needed
+#         echo "##vso[task.setvariable variable=ARM_CLIENT_ID]$(servicePrincipalId)"
+#         echo "##vso[task.setvariable variable=ARM_CLIENT_SECRET;issecret=true]$(servicePrincipalKey)"
+#         echo "##vso[task.setvariable variable=ARM_SUBSCRIPTION_ID]$(tf_subscription_id)"
+#         echo "##vso[task.setvariable variable=ARM_TENANT_ID]$(tenantId)"
+
+#   - task: AzureCLI@2
+#     displayName: Terraform init
+#     inputs:
+#       azureSubscription: 'Free Trial (09b27316-79bc-4c82-8c9f-7d36527f6142)'
+#       scriptType: "bash"
+#       scriptLocation: "inlineScript"
+#       inlineScript: |
+#         set -eux  # Fail on error
+#         terraform init \
+#           -backend-config="resource_group_name=Asda" \
+#           -backend-config="storage_account_name=asda123" \
+#           -backend-config="container_name=tfuser123" \
+#           -backend-config="key=prod.terraform.tfstate"
+#       workingDirectory: $(System.DefaultWorkingDirectory)
+
+
+#   - task: AzureCLI@2
+#     displayName: Terraform validate
+#     inputs:
+#       azureSubscription: ${{ parameters.tf_service_connection }}
+#       scriptType: "bash"
+#       scriptLocation: "inlineScript"
+#       inlineScript: |
+#         set -eux  # Fail on error
+#         terraform validate
+#       workingDirectory: $(System.DefaultWorkingDirectory)
+
+#   - task: AzureCLI@2
+#     displayName: Terraform Plan
+#     inputs:
+#       azureSubscription: ${{ parameters.tf_service_connection }}
+#       scriptType: "bash"
+#       scriptLocation: "inlineScript"
+#       inlineScript: |
+#         terraform plan -var-file=terraform.tfvars -out=${{ parameters.tf_env }}-$(Build.BuildNumber).tfplan
+#       workingDirectory: $(System.DefaultWorkingDirectory)
+
+#   - task: AzureCLI@2
+#     displayName: Terraform Apply
+#     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['Build.Reason'], 'Manual'))
+#     inputs:
+#       azureSubscription: ${{ parameters.tf_service_connection }}
+#       scriptType: "bash"
+#       scriptLocation: "inlineScript"
+#       inlineScript: |
+#         terraform apply \
+#           -input=false \
+#           -auto-approve \
+#           -var-file=terraform.tfvars ${{ parameters.tfeny }}-$(Build.BuildNumber).tfplan
+#       workingDirectory: $(System.DefaultWorkingDirectory)
