@@ -1,0 +1,135 @@
+# Template to execute terraform init, validate, plan and apply
+
+# variable enable_tf_state_locking(true/false) need to be defined before calling this template
+
+parameters:
+  - name: tf_version
+    type: string
+  - name: tf_service_connection
+    type: string
+  - name: tf_env
+    type: string
+  - name: tf_subscription_id
+    type: string
+  - name: appId
+    type: string
+  - name: installationId
+    type: string
+  - name: backendConfigPath
+    type: string
+  - name: tfvarFile
+    type: string
+
+steps:
+  - checkout: self
+    clean: true
+
+  - task: InstallSSHKey@0
+    displayName: Add SSH key for AsdaCloudProductLibrary
+    inputs:
+      knownHostsEntry: "github.com ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg="
+      sshKeySecureFile: emu_rsa
+
+  - task:  ms-devlabs.custom-terraform-tasks.custom-terraform-installer-task.TerraformInstaller@0
+    displayName: "Use Terraform Version ${{ parameters.tf_version }}"
+    inputs:
+      terraformVersion: '${{ parameters.tf_version }}'
+
+  - script: |
+      echo "##vso[task.setvariable variable=enable_tf_state_locking;]false"
+    name: OverrideTFStateLocking
+    displayName: Disable Terraform State locking for non main branches
+    condition: ne(variables['Build.SourceBranch'], 'refs/heads/main')
+
+  - task: AzureCLI@2
+    displayName: Set Terraform environment variables
+    inputs:
+      azureSubscription: ${{ parameters.tf_service_connection }}
+      scriptType: "bash"
+      scriptLocation: "inlineScript"
+      inlineScript: |
+        set -eu
+        echo "##vso[task.setvariable variable=ARM_CLIENT_ID]$servicePrincipalId"
+        echo "##vso[task.setvariable variable=ARM_CLIENT_SECRET;issecret=true]$servicePrincipalKey"
+        echo "##vso[task.setvariable variable=ARM_SUBSCRIPTION_ID]${{ parameters.tf_subscription_id }}"
+        echo "##vso[task.setvariable variable=ARM_TENANT_ID]$tenantId"
+      addSpnToEnvironment: true
+
+  - task: AzureCLI@2
+    displayName: Terraform init
+    inputs:
+      azureSubscription: ${{ parameters.tf_service_connection }}
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        set -eux  # fail on error
+        az --version
+        az account show        
+        terraform init -backend-config=${{parameters.backendConfigPath}} \
+          -backend-config=subscription_id=${{ parameters.tf_subscription_id }} \
+          -backend-config=tenant_id=$tenantId \
+          -backend-config=client_id=$servicePrincipalId \
+          -backend-config=client_secret="$servicePrincipalKey"
+      workingDirectory: '$(System.DefaultWorkingDirectory)/tfplanfile'
+      addSpnToEnvironment: true
+
+  - task: AzureCLI@2
+    displayName: Terraform validate
+    inputs:
+      azureSubscription: ${{ parameters.tf_service_connection }}
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        set -eux  # fail on error
+        terraform validate
+      workingDirectory: '$(System.DefaultWorkingDirectory)/tfplanfile'
+      addSpnToEnvironment: true
+
+  - task: AzureCLI@2
+    displayName: Terraform Plan
+    inputs:
+      azureSubscription: ${{ parameters.tf_service_connection }}
+      scriptType: pscore
+      scriptLocation: inlineScript
+      inlineScript: |
+        terraform plan --var-file=${{ parameters.tfvarFile }} -out='${{ parameters.tf_env }}-$(Build.BuildNumber).tfplan' -lock=$(enable_tf_state_locking)
+      workingDirectory: $(System.DefaultWorkingDirectory)/tfplanfile
+      addSpnToEnvironment: true
+      failOnStandardError: true
+
+########################## Terraform Plan log Filtered ############################
+  - script: |
+      echo "Running terraform plan and capturing logs..."
+      terraform plan -out $(System.DefaultWorkingDirectory)/tfplanfile > $(System.DefaultWorkingDirectory)/tfplan.log 2>&1
+    displayName: 'Capture Terraform Plan Log'
+
+  - script: |
+      input_file="(System.DefaultWorkingDirectory)/tfplan.log"
+      output_file="(System.DefaultWorkingDirectory)/tfplan_filtered.log"
+      echo "Filtering log file to remove known-after-apply lines and ANSI escape sequences..."
+        
+      sed '/known after apply/d' "$input_file" | sed 's/\x1B\[[0-9;]*[JKmsu]//g' > "$output_file"  
+        
+      echo "Filtered log saved to $output_file"
+    displayName: 'Run Bash Script to Filter Log'
+
+  - task: PublishBuildArtifacts@1
+    inputs:
+      pathToPublish: '$(System.DefaultWorkingDirectory)/tfplan_filtered.log'
+      artifactName: 'FilteredTerraformPlanLog'
+      publishLocation: 'container'
+    displayName: 'Publish Filtered Terraform Plan Log as Artifact'
+############################ End Script #########################################
+
+  - task: AzureCLI@2
+    displayName: Terraform Apply
+    inputs:
+      azureSubscription: ${{ parameters.tf_service_connection }}
+      scriptType: pscore
+      scriptLocation: inlineScript
+      inlineScript: |
+        terraform apply -input=false -auto-approve '${{ parameters.tf_env }}-$(Build.BuildNumber).tfplan'
+      workingDirectory: $(System.DefaultWorkingDirectory)
+      addSpnToEnvironment: true
+      failOnStandardError: true
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'), eq(variables['Build.Reason'], 'Manual')) # only run for branch main if build is succeeding so far
